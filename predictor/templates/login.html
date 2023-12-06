@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="{% static '/img/normalize.min.css'%}">
+    <link rel="stylesheet" href="{% static '/img/nav.css'%}">
+    <link rel="stylesheet" href="{% static '/img/other.css'%}">
+    <title>Personality-Login</title>
+</head>
+
+
+
+
+<body>
+    <div class="topnav">
+        <a href="/">Home</a>
+        <a href="/personality/register">Register</a>
+        <a href="admin/">Admin</a>
+    </div>
+    <div class="user ">
+        <header class="user__header ">
+
+            <h1 class="user__title ">Predicto</h1>
+            <br>
+            <div class="user_title2">Know Yourself</div>
+        </header>
+
+        <form class="form " method="post">
+            {% csrf_token %}
+            <div class="form__group">
+                <input class="form__input " type="text" placeholder="username "id="username " name="username"  required/>
+            </div>
+            <div>            
+                <input class="form__input " type="password" placeholder="Password" id="password " name="password" required/>
+            </div>
+            {% if messages %}
+             {% for r in messages %}
+            <div class="alert alert-primary" role="alert">
+                {{r}}
+            </div>
+            {% endfor %} {% endif %}
+
+
+            <button class="btn" type="submit " id="submit " name="submit " value="Login ">login</button>
+
+
+        </form>
+    </div>
+    <!-- partial -->
+    <script>
+        const button = document.querySelector('.btn')
+        const form = document.querySelector('.form')
+
+        button.addEventListener('click', function() {
+            form.classList.add('form--no')
+        });
+    </script>
+
+</body>
+</html>

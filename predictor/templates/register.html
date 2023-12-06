@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personality-Register</title>
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+    <title>Personality-Login</title>
+    <link rel="stylesheet" href="{% static '/img/reg.css'%}">
+    <link rel="stylesheet" href="{% static '/img/nav.css'%}">
+
+   
+</head>
+   
+<body>
+    <div class="topnav">
+        <a href="/">Home</a>
+    </div>
+    <div class="user ">
+        <header class="user__header ">
+
+            <h1 class="user__title ">Enter your Details</h1>
+    
+     
+                <form method="post" class="form ">
+                    {% csrf_token %}
+                    <div class="form__group">
+                     <input class="form__input" type="text" id="fullname" name="fullname" placeholder="Enter your name" required>
+                    </div>
+                    <div>
+                        <input class="form__input"type="text" id="username" name="username" placeholder="Enter your username" required>
+                    </div>
+                    <div>
+                         <input class="form__input"type="password" id="password" name="password" placeholder="Password" pattern=".{8,}" required>
+                    </div>
+                    <div>
+                     <input class="form__input" type="text" name="mobileno" id="mobileno" placeholder="Enter your Mobile No" pattern="[6-9]{1}[0-9]{9}" required>
+                    </div>
+                    <div>
+                     <input class="form__input" type="text" name="email" id="email" placeholder="Enter your Email-ID" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" required>
+                    </div>
+                    {% if messages %}
+                    {% for r in messages %}
+                    <div class="alert alert-primary" role="alert">
+                        {{r}}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    <button class="btn" type="submit" id="submit" name="submit" value="Register">Register</button>
+                   
+                </form>
+                
+                
+    </div>
+
+    
+    
+    
+</body>
+</html>

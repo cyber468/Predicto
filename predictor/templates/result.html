@@ -1,0 +1,90 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="{% static '/img/normalize.min.css'%}">
+    <link rel="stylesheet" href="{% static '/img/res.css'%}">
+    <link rel="stylesheet" href="{% static '/img/nav.css'%}">
+    <link rel="stylesheet" type="text/css" href="{% static '/img/loading-bar.css'%}"/>
+    <script type="text/javascript" src="{% static '/js/loading-bar.js'%}"></script>
+    <title>Personality-Login</title>
+</head>
+<style>
+    * {box-sizing: border-box
+        
+    }
+
+    .container {
+  width: 60%;
+  background-color: #ddd;
+  margin-left:20%
+  
+    }
+
+    .skills {
+  text-align: justify;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  color: white;
+    }
+
+    .m1 {width: {{a1}}%; background-color: #04AA6D;}
+    .m2 {width: {{a2}}%; background-color: #2196F3;}
+    .m3 {width: {{a3}}%; background-color: #f44336;}
+    .m4 {width: {{a4}}%; background-color: #808080;}
+    .m5 {width: {{a5}}%; background-color: #802280;}
+    
+</style>
+<body>     
+    <div class="topnav">
+        <a href="/">Home</a>
+    </div>
+   
+    <div class="user__header" > 
+     <div  class="user__title">
+        RESULT
+     </div> 
+     <br>
+        <div class="name">
+         Hello {{name}}!!!
+            </div> 
+            <br><br>            
+            <div>EXTROVERT</div>
+            <div class="container">
+            <div class="skills m1">{{a1}}</div>
+            </div><br>
+
+            <div>NEUROTIC</div>
+            <div class="container">
+            <div class="skills m2">{{a2}}</div>
+            </div><br>
+
+            <div>AGREEABLE</div>
+            <div class="container">
+            <div class="skills m3">{{a3}}</div>
+            </div><br>
+
+            <div>CONSCIENTIOUS</div>
+            <div class="container">
+            <div class="skills m4">{{a4}}</div>
+            </div><br>
+            <div>OPEN TO EXPERIENCE</div>
+            <div class="container">
+            <div class="skills m5">{{a5}}</div>
+            </div>
+    </div>    
+        
+
+
+    
+</body>
+
+<script>
+    
+</script>
+</html>
