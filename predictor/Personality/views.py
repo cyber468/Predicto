@@ -1,12 +1,10 @@
-import email
 from django.conf import settings
 from django.shortcuts import render,redirect,HttpResponse
 from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib import messages
 from Personality.models import registration_details,user_answers,clusterNum
-from django.core.mail import send_mail 
+from django.core.mail import send_mail
 from django.views.decorators.csrf import csrf_protect
-import pandas as pd
 from .apps import *
 
 # @csrf_protect
@@ -160,9 +158,9 @@ def result(request):
             print(answer)
             send_mail("Thank You For Attending Predicto !",
                       answers,
-                      "jeevaindrajit@gmail.com",
+                      settings.EMAIL_HOST_USER,
                       mail,
-                      fail_silently=False)        
+                      fail_silently=False)
         except:              
             ans.save()
         
@@ -172,58 +170,20 @@ def result(request):
     return render(request,'result.html',{'name':username,'a1':a1,'a2':a2,'a3':a3,'a4':a4,'a5':a5})
 
 def getPredictions(check):
-    
+
     model=PersonalityConfig.model
     final_lists=[[check.q1,check.q2,check.q3,check.q4,check.q5,check.q6,check.q7,check.q8,check.q9,check.q10,check.q11,check.q12,check.q13,check.q14,check.q15,check.q16,check.q17,check.q18,check.q19,check.q20,check.q21,check.q22,check.q23,check.q24,check.q25,check.q26,check.q27,check.q28,check.q29,check.q30,check.q31,check.q32,check.q33,check.q34,check.q35,check.q36,check.q37,check.q38,check.q39,check.q40,check.q41,check.q42,check.q43,check.q44,check.q45,check.q46,check.q47,check.q48,check.q49,check.q50]]
     prediction = model.predict(final_lists)
-    # prediction = model.predict([[2.0,3.0,4.0,5.0,4.0,4.0,3.0,4.0,4.0,4.0,3.0,4.0,4.0,4.0,5.0,3.0,3.0,5.0,5.0,2.0,4.0,5.0,5.0,5.0,4.0,5.0,4.0,5.0,4.0,4.0,4.0,5.0,4.0,5.0,5.0,4.0,5.0,5.0,5.0,4.0,4.0,4.0,3.0,3.0,4.0,5.0,4.0,3.0,4.0,4.0]])
-    #print(prediction)
-    md=PersonalityConfig.dataset
-    data = md.copy()
-    data.drop(data.columns[51:107], axis=1, inplace=True)
-    #data.head()
-    #print(data.isnull().values.sum())
-    data.dropna(inplace=True)
-    #print(data.isnull().values.sum())
-    data.drop('country',inplace=True,axis=1)
-    new_data = data
-    predictions=model.labels_
-    #print(predictions)
-    a = predictions
-    new_data['clusters']=a
-    #print(new_data)
-    col_list = list(new_data)
-    #print(col_list)
-    ext = col_list[0:10]
-    est = col_list[10:20]
-    agr = col_list[20:30]
-    csn = col_list[30:40]
-    opn = col_list[40:50]
 
-    data_sums = pd.DataFrame()
-    data_sums['extroversion'] = new_data[ext].sum(axis=1)/10
-    data_sums['neurotic'] = new_data[est].sum(axis=1)/10
-    data_sums['agreeable'] = new_data[agr].sum(axis=1)/10
-    data_sums['conscientious'] = new_data[csn].sum(axis=1)/10
-    data_sums['open'] = new_data[opn].sum(axis=1)/10
-   # print("Clusters before")
-    data_sums['clusters'] = a
-    #print(data_sums)
-   # data_sums
-    val = data_sums.groupby('clusters').mean()
-   # print(val)
-   # print(type(val))
-    a1 = round((val.at[prediction[0],"extroversion"]/5)*100,2)
-    a2 = round((val.at[prediction[0],"neurotic"]/5)*100,2)
-    a3 = round((val.at[prediction[0],"agreeable"]/5)*100,2)
-    a4 = round((val.at[prediction[0],"conscientious"]/5)*100,2)
-    a5 = round((val.at[prediction[0],"open"]/5)*100,2)
-    # res = val.head(prediction[0]+1).tail(1)
-    # a1 = (res.extroversion/5)*100
-    # a2 = (res.neurotic/5)*100
-    # a3 = (res.agreeable/5)*100
-    # a4 = (res.conscientious/5)*100
-    # a5 = (res.open/5)*100
-    #print(a1,a2,a3,a4,a5)
+    # model.cluster_centers_[cluster] is already the mean of the 50 answer
+    # features for that cluster (that's the definition of a KMeans centroid),
+    # so it gives the same per-trait averages the app used to recompute from
+    # the raw training dataset, without needing that dataset at request time.
+    center = model.cluster_centers_[prediction[0]]
+    a1 = round((center[0:10].mean()/5)*100,2)
+    a2 = round((center[10:20].mean()/5)*100,2)
+    a3 = round((center[20:30].mean()/5)*100,2)
+    a4 = round((center[30:40].mean()/5)*100,2)
+    a5 = round((center[40:50].mean()/5)*100,2)
     return(prediction,a1,a2,a3,a4,a5)
 
