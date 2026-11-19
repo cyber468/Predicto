@@ -1,189 +1,189 @@
-from django.conf import settings
-from django.shortcuts import render,redirect,HttpResponse
-from django.http import HttpResponseRedirect, JsonResponse
-from django.contrib import messages
-from Personality.models import registration_details,user_answers,clusterNum
-from django.core.mail import send_mail
-from django.views.decorators.csrf import csrf_protect
-from .apps import *
+import hmac
+import logging
+from functools import wraps
 
-# @csrf_protect
-# Create your views here.
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.db import IntegrityError
+import re
+from django.core.validators import validate_email
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
+
+from . import ml
+from .models import clusterNum, registration_details, user_answers
+from .questions import QUESTIONS, TRAITS
+
+logger = logging.getLogger(__name__)
+
+SCALE = [("1", "Strongly disagree"), ("2", "Disagree"), ("3", "Neutral"), ("4", "Agree"), ("5", "Strongly agree")]
+HASH_PREFIX = "pbkdf2_"  # Django's default hasher; anything else is a legacy plaintext password
+
+
+def _current_user(request):
+    username = request.session.get("username")
+    return registration_details.objects.filter(pk=username).first() if username else None
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        user = _current_user(request)
+        if user is None:
+            request.session.flush()
+            messages.error(request, "Log in to continue.")
+            return redirect("login")
+        request.user_row = user
+        return view(request, *args, **kwargs)
+
+    return wrapper
+
+
+def _password_ok(user, password):
+    stored = user.password or ""
+    if not stored or not password:
+        return False  # legacy rows with no password must never match an empty one
+    if stored.startswith(HASH_PREFIX):
+        return check_password(password, stored)
+    # Legacy account created before passwords were hashed: compare, then upgrade.
+    if hmac.compare_digest(stored.encode(), password.encode()):
+        user.password = make_password(password)
+        user.save(update_fields=["password"])
+        return True
+    return False
+
+
 def login(request):
     if request.method == "POST":
-        # print("Inside login")
-        request.session["username"] = request.POST.get('username')
-        request.session["password"] = request.POST.get('password')
-        uname = None
-        passw = None
-        try:
-            uname = registration_details.objects.get(username= request.session["username"],password= request.session["password"])
-            # passw = registration_details.objects.get()
-        except:
-            uname = None
-            passw = None
-        if uname:
-            if request.session["username"]==uname.username and request.session["password"]==uname.password:
-                ch=None
-                try:
-                    ch=clusterNum.objects.get(username=request.session["username"])
-                except:
-                    ch=None
-                if ch:
-                    return render(request,'result.html',{'name':request.session["username"],'a1':ch.extroversion,'a2':ch.neurotic,'a3':ch.agreeable,'a4':ch.conscientious,'a5':ch.openness})
-                else:
-                    return redirect("/personality/question")
-        else:
-            messages.error(request,'Invalid Username or Password')
-            return HttpResponseRedirect("/")
-    else:
-        return render(request,'login.html')
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = registration_details.objects.filter(pk=username).first()
+        if user is None:
+            make_password(password)  # spend the same time as a real check so timing does not reveal usernames
+        if user and _password_ok(user, password):
+            request.session.flush()  # new session id, nothing carried over from before login
+            request.session["username"] = user.username
+            has_result = clusterNum.objects.filter(pk=user.username).exists()
+            return redirect("result" if has_result else "question")
+        messages.error(request, "That username and password don't match.")
+        return render(request, "login.html", {"username": username}, status=200)
+    if _current_user(request):
+        return redirect("result")
+    return render(request, "login.html")
+
 
 def register(request):
-    if request.method == "POST":
-        request.session["fullname"] = request.POST.get('fullname')
-        request.session["username"] = request.POST.get('username')
-        request.session["password"] = request.POST.get('password')
-        request.session["mobileno"] = request.POST.get('mobileno')
-        request.session["email"] = request.POST.get('email')
-        check = None
-        try:
-            check = registration_details.objects.get(username=request.session["username"])
-        except:
-            check = None
-        if check:
-            messages.error(request,'Username already exists')
-            return HttpResponseRedirect("/personality/register")
-        else:
-            userd = registration_details.objects.create(fullname=request.session["fullname"],username=request.session["username"],password=request.session["password"],mobileno=request.session["mobileno"],email=request.session["email"])
-            userd.save()
-            return redirect("/")
-    else:
-        return render(request,'register.html')
+    if request.method != "POST":
+        return render(request, "register.html")
 
-def question(request):
-    if request.method=="POST":
-        # print(request.session["username"])
-        # request.session['name'] =  request.POST.get('name')  
-        # print(request.session['name'])
-        myname = None
-        try:
-            myname = registration_details.objects.get(username=request.session['username'])
-        except:
-            myname = None
-        request.session['q1'] = float(request.POST.get('qu1'))
-        request.session['q2'] = float(request.POST.get('qu2'))
-        request.session['q3'] = float(request.POST.get('qu3'))
-        request.session['q4'] = float(request.POST.get('qu4'))
-        request.session['q5'] = float(request.POST.get('qu5'))
-        request.session['q6'] = float(request.POST.get('qu6'))
-        request.session['q7'] = float(request.POST.get('qu7'))
-        request.session['q8'] = float(request.POST.get('qu8'))
-        request.session['q9'] = float(request.POST.get('qu9'))
-        request.session['q10'] = float(request.POST.get('qu10'))
-        request.session['q11'] = float(request.POST.get('qu11'))
-        request.session['q12'] = float(request.POST.get('qu12'))
-        request.session['q13'] = float(request.POST.get('qu13'))
-        request.session['q14'] = float(request.POST.get('qu14'))
-        request.session['q15'] = float(request.POST.get('qu15'))
-        request.session['q16'] = float(request.POST.get('qu16'))
-        request.session['q17'] = float(request.POST.get('qu17'))
-        request.session['q18'] = float(request.POST.get('qu18'))
-        request.session['q19'] = float(request.POST.get('qu19'))
-        request.session['q20'] = float(request.POST.get('qu20'))
-        request.session['q21'] = float(request.POST.get('qu21'))
-        request.session['q22'] = float(request.POST.get('qu22'))
-        request.session['q23'] = float(request.POST.get('qu23'))
-        request.session['q24'] = float(request.POST.get('qu24'))
-        request.session['q25'] = float(request.POST.get('qu25'))
-        request.session['q26'] = float(request.POST.get('qu26'))
-        request.session['q27'] = float(request.POST.get('qu27'))
-        request.session['q28'] = float(request.POST.get('qu28'))
-        request.session['q29'] = float(request.POST.get('qu29'))
-        request.session['q30'] = float(request.POST.get('qu30'))
-        request.session['q31'] = float(request.POST.get('qu31'))
-        request.session['q32'] = float(request.POST.get('qu32'))
-        request.session['q33'] = float(request.POST.get('qu33'))
-        request.session['q34'] = float(request.POST.get('qu34'))
-        request.session['q35'] = float(request.POST.get('qu35'))
-        request.session['q36'] = float(request.POST.get('qu36'))
-        request.session['q37'] = float(request.POST.get('qu37'))
-        request.session['q38'] = float(request.POST.get('qu38'))
-        request.session['q39'] = float(request.POST.get('qu39'))
-        request.session['q40'] = float(request.POST.get('qu40'))
-        request.session['q41'] = float(request.POST.get('qu41'))
-        request.session['q42'] = float(request.POST.get('qu42'))
-        request.session['q43'] = float(request.POST.get('qu43'))
-        request.session['q44'] = float(request.POST.get('qu44'))
-        request.session['q45'] = float(request.POST.get('qu45'))
-        request.session['q46'] = float(request.POST.get('qu46'))
-        request.session['q47'] = float(request.POST.get('qu47'))
-        request.session['q48'] = float(request.POST.get('qu48'))
-        request.session['q49'] = float(request.POST.get('qu49'))
-        request.session['q50'] = float(request.POST.get('qu50'))
-        ans = user_answers.objects.create(username_id=myname.username,q1=request.session['q1'],q2=request.session['q2'],q3=request.session['q3'],q4=request.session['q4'],q5=request.session['q5'],q6=request.session['q6'],q7=request.session['q7'],q8=request.session['q8'],q9=request.session['q9'],q10=request.session['q10'],q11=request.session['q11'],q12=request.session['q12'],q13=request.session['q13'],q14=request.session['q14'],q15=request.session['q15'],q16=request.session['q16'],q17=request.session['q17'],q18=request.session['q18'],q19=request.session['q19'],q20=request.session['q20'],q21=request.session['q21'],q22=request.session['q22'],q23=request.session['q23'],q24=request.session['q24'],q25=request.session['q25'],q26=request.session['q26'],q27=request.session['q27'],q28=request.session['q28'],q29=request.session['q29'],q30=request.session['q30'],q31=request.session['q31'],q32=request.session['q32'],q33=request.session['q33'],q34=request.session['q34'],q35=request.session['q35'],q36=request.session['q36'],q37=request.session['q37'],q38=request.session['q38'],q39=request.session['q39'],q40=request.session['q40'],q41=request.session['q41'],q42=request.session['q42'],q43=request.session['q43'],q44=request.session['q44'],q45=request.session['q45'],q46=request.session['q46'],q47=request.session['q47'],q48=request.session['q48'],q49=request.session['q49'],q50=request.session['q50'])
-        ans.save()
-        print("Stored in Database")
-        return redirect("/personality/result")
-    else:  
-        # name = request.session["username"]
-        
-        return render(request,'question.html')
-        
-
-def result(request):
-    check = None
+    data = {k: request.POST.get(k, "").strip() for k in ("fullname", "username", "mobileno", "email")}
+    password = request.POST.get("password", "")
+    errors = {}
+    if not data["fullname"] or len(data["fullname"]) > 30:
+        errors["fullname"] = "Enter your name (30 characters or fewer)."
+    if not 3 <= len(data["username"]) <= 30 or " " in data["username"]:
+        errors["username"] = "Use 3 to 30 characters with no spaces."
+    elif registration_details.objects.filter(pk=data["username"]).exists():
+        errors["username"] = "That username is taken. Try another."
+    if len(password) < 8:
+        errors["password"] = "Use at least 8 characters."
     try:
-        check = user_answers.objects.get(username=request.session["username"])
-        print(check)
-    except:
-        check = None
-    if check:
-        results,a1,a2,a3,a4,a5 = getPredictions(check)
-        print(results,a1,a2,a3,a4,a5) 
-        username = request.session["username"]
-        print(username)
-        try:
-            ch=registration_details.objects.get(username=request.session["username"])
-        except:
-            ch=None
-        
-        ans = clusterNum.objects.create(username_id=request.session["username"],clusNo = results[0],extroversion=a1,neurotic=a2,agreeable=a3,conscientious=a4,openness=a5)
-        try:
-         if ch:
-            mail=[ch.email]
-            print (mail)
-            answer=a1,a2,a3,a4,a5
-            answers = "Your Results:"+ "\nEntrovert: " + str(answer[0]) + "\nNeurotic: " + str(answer[1]) + "\nAgreeable: " + str(answer[2]) + "\nConscientious: " + str(answer[3]) + "\nOpen To Experience: " + str(answer[4])
-            print(answer)
-            send_mail("Thank You For Attending Predicto !",
-                      answers,
-                      settings.EMAIL_HOST_USER,
-                      mail,
-                      fail_silently=False)
-        except:              
-            ans.save()
-        
-            
-        
-    # results = getPredictions()
-    return render(request,'result.html',{'name':username,'a1':a1,'a2':a2,'a3':a3,'a4':a4,'a5':a5})
+        validate_email(data["email"])
+    except ValidationError:
+        errors["email"] = "Enter a valid email address."
+    if data["mobileno"] and not re.fullmatch(r"\+?\d{6,14}", data["mobileno"]):
+        errors["mobileno"] = "Use 6 to 14 digits, with an optional leading +."
 
-def getPredictions(check):
+    if errors:
+        return render(request, "register.html", {"errors": errors, "values": data}, status=200)
 
-    model=PersonalityConfig.model
-    final_lists=[[check.q1,check.q2,check.q3,check.q4,check.q5,check.q6,check.q7,check.q8,check.q9,check.q10,check.q11,check.q12,check.q13,check.q14,check.q15,check.q16,check.q17,check.q18,check.q19,check.q20,check.q21,check.q22,check.q23,check.q24,check.q25,check.q26,check.q27,check.q28,check.q29,check.q30,check.q31,check.q32,check.q33,check.q34,check.q35,check.q36,check.q37,check.q38,check.q39,check.q40,check.q41,check.q42,check.q43,check.q44,check.q45,check.q46,check.q47,check.q48,check.q49,check.q50]]
-    prediction = model.predict(final_lists)
+    try:
+        registration_details.objects.create(password=make_password(password), **data)
+    except IntegrityError:  # two submissions raced for the same username
+        errors["username"] = "That username is taken. Try another."
+        return render(request, "register.html", {"errors": errors, "values": data}, status=200)
+    messages.success(request, "Account created. Log in to start the quiz.")
+    return redirect("login")
 
-    # model.cluster_centers_[cluster] is already the mean of the 50 answer
-    # features for that cluster (that's the definition of a KMeans centroid),
-    # so it gives the same per-trait averages the app used to recompute from
-    # the raw training dataset, without needing that dataset at request time.
-    center = model.cluster_centers_[prediction[0]]
-    a1 = round((center[0:10].mean()/5)*100,2)
-    a2 = round((center[10:20].mean()/5)*100,2)
-    a3 = round((center[20:30].mean()/5)*100,2)
-    a4 = round((center[30:40].mean()/5)*100,2)
-    a5 = round((center[40:50].mean()/5)*100,2)
-    return(prediction,a1,a2,a3,a4,a5)
 
+@require_POST
+def logout(request):
+    request.session.flush()
+    return redirect("login")
+
+
+@login_required
+def question(request):
+    user = request.user_row
+    if request.method == "POST":
+        values = {}
+        for i in range(1, len(QUESTIONS) + 1):
+            raw = request.POST.get(f"qu{i}", "")
+            if raw not in ("1", "2", "3", "4", "5"):
+                messages.error(request, "Answer all 50 statements before you finish.")
+                return redirect("question")
+            values[f"q{i}"] = float(raw)  # stored raw (5 = strongly agree); keying happens in ml.py
+        user_answers.objects.update_or_create(username_id=user.username, defaults=values)
+        clusterNum.objects.filter(pk=user.username).delete()  # force a fresh prediction
+        return redirect("result")
+
+    retaking = clusterNum.objects.filter(pk=user.username).exists()
+    return render(request, "question.html", {"questions": [q for q, _ in QUESTIONS], "retaking": retaking, "scale": SCALE})
+
+
+@login_required
+def result(request):
+    user = request.user_row
+    answers = user_answers.objects.filter(pk=user.username).first()
+    values = [getattr(answers, f"q{i}", None) for i in range(1, 51)] if answers else []
+    if len(values) != 50 or None in values:
+        return redirect("question")
+
+    mine = ml.trait_scores(values)
+    cluster, group = ml.predict(values)
+    _, created = clusterNum.objects.update_or_create(
+        username_id=user.username,
+        defaults=dict(zip(
+            ("clusNo", "extroversion", "neurotic", "agreeable", "conscientious", "openness"),
+            (cluster, *group),
+        )),
+    )
+    if created:
+        _email_results(user, group)
+
+    traits = [
+        {"key": key, "label": label, "desc": desc, "mine": mine[i], "group": group[i]}
+        for i, (key, label, desc) in enumerate(TRAITS)
+    ]
+    def shade(v):  # 1..5 -> opacity of a dot
+        return round(0.15 + (v - 1) / 4 * 0.85, 2)
+
+    rows = []
+    for t, (_, label, _) in enumerate(TRAITS):
+        dots = []
+        for i in range(t * 10, t * 10 + 10):
+            raw = int(values[i])
+            rev = bool(ml.REVERSED[i])
+            keyed = 6 - raw if rev else raw
+            dots.append({"text": QUESTIONS[i][0], "raw": raw, "keyed": keyed, "rev": rev,
+                         "ro": shade(raw), "ko": shade(keyed), "d": round((i % 10) * 0.05 + t * 0.04, 2)})
+        rows.append({"label": label, "t": t, "dots": dots, "mine": mine[t]})
+    return render(request, "result.html", {
+        "name": user.fullname or user.username, "traits": traits, "cluster": cluster, "rows": rows,
+        "reversed_count": int(ml.REVERSED.sum()), "total": len(values),
+        "statements": [q for q, _ in QUESTIONS],
+    })
+
+
+def _email_results(user, group):
+    if not (settings.EMAIL_HOST_USER and settings.EMAIL_HOST_PASSWORD and user.email):
+        return
+    lines = [f"{label}: {group[i]}%" for i, (_, label, _) in enumerate(TRAITS)]
+    try:
+        send_mail("Your Predicto results", "Your results:\n" + "\n".join(lines),
+                  settings.EMAIL_HOST_USER, [user.email], fail_silently=False)
+    except Exception:
+        logger.exception("Could not email results to %s", user.username)

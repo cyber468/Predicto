@@ -16,3 +16,10 @@ db.sqlite3
 
 # Editors / OS
 .DS_Store
+.venv/
+
+# e2e screenshots
+e2e/shots/
+
+# graphify output (generated; rebuilt by the post-commit hook)
+graphify-out/

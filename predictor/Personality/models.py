@@ -5,9 +5,9 @@ from django.db import models
 class registration_details(models.Model):
     fullname = models.CharField('fullname', max_length=30,null=True)
     username = models.CharField('username', max_length=30,primary_key =True,default="null")
-    password = models.CharField('password', max_length=20, null=True)
+    password = models.CharField('password', max_length=128, null=True)
     mobileno = models.CharField('mobileno', max_length=15,null=True)
-    email = models.CharField('email', max_length=30,null=True)
+    email = models.CharField('email', max_length=254,null=True)
     
 
 class user_answers(models.Model):

@@ -1,90 +1,116 @@
-
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" href="{% static '/img/normalize.min.css'%}">
-    <link rel="stylesheet" href="{% static '/img/res.css'%}">
-    <link rel="stylesheet" href="{% static '/img/nav.css'%}">
-    <link rel="stylesheet" type="text/css" href="{% static '/img/loading-bar.css'%}"/>
-    <script type="text/javascript" src="{% static '/js/loading-bar.js'%}"></script>
-    <title>Personality-Login</title>
-</head>
-<style>
-    * {box-sizing: border-box
-        
-    }
+{% block title %}Your result · Predicto{% endblock %}
+{% block bodyclass %}result-page{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/result.css' %}">{% endblock %}
+{% block content %}
 
-    .container {
-  width: 60%;
-  background-color: #ddd;
-  margin-left:20%
-  
-    }
+<header class="hero">
+  <div class="floaters" aria-hidden="true">
+    {% for n in "12345" %}<svg class="fl f{{ n }}" viewBox="-50 -50 100 100"><polygon points="0,-44 41.8,-13.6 25.9,35.6 -25.9,35.6 -41.8,-13.6"/></svg>{% endfor %}
+  </div>
+  <h1>{{ name }}, this is your shape.</h1>
+  <p class="lede">Fifty statements became five scores. The solid shape is the average profile of people who answered like you. The dashed outline is what you answered yourself.</p>
+  <ul class="chips">
+    <li>Public-domain IPIP statements</li>
+    <li>Published IPIP scoring key</li>
+    <li>{{ reversed_count }} of {{ total }} statements reverse-scored</li>
+  </ul>
+</header>
 
-    .skills {
-  text-align: justify;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  color: white;
-    }
+<section class="result" aria-label="Your scores">
+  <figure class="radar-wrap">
+    <svg id="radar" viewBox="-190 -130 380 260" role="img" aria-label="Radar chart of your five trait scores"></svg>
+  </figure>
+  <ul class="traits" id="traits">
+    {% for t in traits %}
+    <li class="trait t{{ forloop.counter0 }}" tabindex="0" data-mine="{{ t.mine }}" data-group="{{ t.group }}" data-label="{{ t.label }}">
+      <div class="trait-top"><h2>{{ t.label }}</h2><span class="num" data-to="{{ t.group }}">{{ t.group }}%</span></div>
+      <div class="meter" aria-hidden="true"><i style="--w: {{ t.group }}%"></i><b style="--x: {{ t.mine }}%"></b></div>
+      <p class="sub">Your own answers: {{ t.mine }}%</p>
+      <p class="desc">{{ t.desc }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
 
-    .m1 {width: {{a1}}%; background-color: #04AA6D;}
-    .m2 {width: {{a2}}%; background-color: #2196F3;}
-    .m3 {width: {{a3}}%; background-color: #f44336;}
-    .m4 {width: {{a4}}%; background-color: #808080;}
-    .m5 {width: {{a5}}%; background-color: #802280;}
-    
-</style>
-<body>     
-    <div class="topnav">
-        <a href="/">Home</a>
+<section class="how" id="how" aria-labelledby="how-h">
+  <h2 id="how-h">How your 50 answers became five numbers</h2>
+  <ol class="steps">
+    <li data-step="1"><strong>Your answers.</strong> Each dot is one statement. Darker means you agreed more.</li>
+    <li data-step="2"><strong>The key.</strong> {{ reversed_count }} statements are worded the other way round (like "I don't talk a lot"). They flip so that darker always means more of the trait.</li>
+    <li data-step="3"><strong>The average.</strong> Ten dots per trait, averaged and rescaled to 0 to 100%.</li>
+  </ol>
+  <div class="dots" id="dots" data-armed="false">
+    {% for r in rows %}
+    <div class="drow t{{ r.t }}">
+      <span class="dlabel">{{ r.label }}</span>
+      <span class="dcells">
+        {% for d in r.dots %}<i class="d{% if d.rev %} rev{% endif %}" style="--ro: {{ d.ro }}; --ko: {{ d.ko }}; --d: {{ d.d }}s" title="{{ d.text }} You chose {{ d.raw }} of 5.{% if d.rev %} Reverse-scored to {{ d.keyed }}.{% endif %}"></i>{% endfor %}
+      </span>
+      <span class="dbar"><i style="--w: {{ r.mine }}%"></i></span>
+      <span class="dnum" data-to="{{ r.mine }}">{{ r.mine }}%</span>
     </div>
-   
-    <div class="user__header" > 
-     <div  class="user__title">
-        RESULT
-     </div> 
-     <br>
-        <div class="name">
-         Hello {{name}}!!!
-            </div> 
-            <br><br>            
-            <div>EXTROVERT</div>
-            <div class="container">
-            <div class="skills m1">{{a1}}</div>
-            </div><br>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn ghost js-only" id="replay">Replay</button>
+</section>
 
-            <div>NEUROTIC</div>
-            <div class="container">
-            <div class="skills m2">{{a2}}</div>
-            </div><br>
+<div class="ribbon" aria-hidden="true">
+  <div class="ribbon-track">
+    {% for s in statements %}<span>{{ s }}</span>{% endfor %}
+    {% for s in statements %}<span>{{ s }}</span>{% endfor %}
+  </div>
+</div>
 
-            <div>AGREEABLE</div>
-            <div class="container">
-            <div class="skills m3">{{a3}}</div>
-            </div><br>
+<section class="science" aria-labelledby="sci-h">
+  <h2 id="sci-h">The research behind it</h2>
+  <p class="sci-intro">Predicto does not invent its own test. Here is what each part rests on, and where it stops.</p>
+  <div class="cards">
+    <article class="card c1">
+      <h3>The statements are a public research scale</h3>
+      <p>They come from the International Personality Item Pool (IPIP), a public-domain collection of personality items started by Lewis Goldberg. The 50-statement Big Five set builds on his work on Big Five markers. IPIP items have been translated into more than 25 languages.</p>
+      <p class="cite">Goldberg (1992); Goldberg et al. (2006)</p>
+    </article>
+    <article class="card c2">
+      <h3>Five traits, found again and again</h3>
+      <p>Decades of work on how people describe each other kept producing the same five broad dimensions, and Digman's 1990 review traced how that five-factor model emerged. A large comparison by Roberts and colleagues reported that traits predicted outcomes such as mortality, divorce and occupational attainment about as well as socioeconomic status and cognitive ability.</p>
+      <p class="cite">Digman (1990); Roberts et al. (2007)</p>
+    </article>
+    <article class="card c3">
+      <h3>Your numbers use the published scoring key</h3>
+      <p>Each statement is rated 1 to 5. The negatively worded ones are flipped, the ten statements for each trait are averaged, and the result is rescaled to 0 to 100%. The IPIP notes that scoring five response options from 1 to 5 keeps results comparable with published studies.</p>
+      <p class="cite"><a href="https://ipip.ori.org/New_IPIP-50-item-scale.htm" rel="noopener" target="_blank">IPIP 50-item scale and key</a></p>
+    </article>
+    <article class="card c4">
+      <h3>The group profile is a pattern, not a diagnosis</h3>
+      <p>A K-means model with five clusters was trained on about one million people's answers to these same statements. Your answers are matched to the nearest cluster, and the filled shape shows that cluster's average. The five groups describe that sample. They are not five kinds of people, which is why your own dashed outline is the more personal result. The training data is not part of this project, so it cannot be checked here.</p>
+    </article>
+  </div>
+</section>
 
-            <div>CONSCIENTIOUS</div>
-            <div class="container">
-            <div class="skills m4">{{a4}}</div>
-            </div><br>
-            <div>OPEN TO EXPERIENCE</div>
-            <div class="container">
-            <div class="skills m5">{{a5}}</div>
-            </div>
-    </div>    
-        
+<section class="limits" aria-labelledby="lim-h">
+  <h2 id="lim-h">What this cannot tell you</h2>
+  <ul>
+    <li><strong>A score is an average, not a rank.</strong> 68% means your answers averaged about 3.4 out of 5. It does not mean you beat 68% of people.</li>
+    <li><strong>Ten statements per trait is a short form.</strong> It is quick but less precise than long inventories, and some independent analyses find the 50-statement set's structure less clean than longer versions, especially for Openness.</li>
+    <li><strong>It is self-report.</strong> Your mood and the day you answer can move the scores. Retake it another day to see how stable they are.</li>
+    <li><strong>The comparison group is unknown to us.</strong> It is people who answered the same questionnaire, and we have no detail on who they were.</li>
+    <li><strong>It is not a clinical or hiring tool.</strong> Do not use it to diagnose anyone or to make decisions about people.</li>
+  </ul>
+</section>
 
+<section class="refs" aria-labelledby="ref-h">
+  <h2 id="ref-h">References</h2>
+  <ol>
+    <li>Digman, J. M. (1990). Personality structure: Emergence of the five-factor model. <i>Annual Review of Psychology, 41</i>, 417&ndash;440.</li>
+    <li>Goldberg, L. R. (1992). The development of markers for the Big-Five factor structure. <i>Psychological Assessment, 4</i>(1), 26&ndash;42. <a href="https://doi.org/10.1037/1040-3590.4.1.26" rel="noopener" target="_blank">doi:10.1037/1040-3590.4.1.26</a></li>
+    <li>Goldberg, L. R., Johnson, J. A., Eber, H. W., Hogan, R., Ashton, M. C., Cloninger, C. R., &amp; Gough, H. G. (2006). The international personality item pool and the future of public-domain personality measures. <i>Journal of Research in Personality, 40</i>(1), 84&ndash;96. <a href="https://doi.org/10.1016/j.jrp.2005.08.007" rel="noopener" target="_blank">doi:10.1016/j.jrp.2005.08.007</a></li>
+    <li>Roberts, B. W., Kuncel, N. R., Shiner, R., Caspi, A., &amp; Goldberg, L. R. (2007). The power of personality: The comparative validity of personality traits, socioeconomic status, and cognitive ability for predicting important life outcomes. <i>Perspectives on Psychological Science, 2</i>(4), 313&ndash;345. <a href="https://doi.org/10.1111/j.1745-6916.2007.00047.x" rel="noopener" target="_blank">doi:10.1111/j.1745-6916.2007.00047.x</a></li>
+    <li>International Personality Item Pool. <a href="https://ipip.ori.org/" rel="noopener" target="_blank">ipip.ori.org</a></li>
+  </ol>
+</section>
 
-    
-</body>
-
-<script>
-    
-</script>
-</html>
+<div class="actions"><a class="btn ghost" href="{% url 'question' %}">Retake the quiz</a></div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/radar.js' %}"></script>{% endblock %}

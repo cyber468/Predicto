@@ -1,0 +1,34 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Predicto{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <a class="brand" href="{% url 'login' %}" aria-label="Predicto home">
+      <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><polygon points="16,3 28.5,12.1 23.7,26.9 8.3,26.9 3.5,12.1" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><polygon points="16,10 22,14.4 19.7,21.6 12.3,21.6 10,14.4" fill="currentColor"/></svg>
+      Predicto
+    </a>
+    {% if request.session.username %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link" type="submit">Log out</button></form>
+    {% endif %}
+  </header>
+  <main id="main">
+    {% if messages %}
+    <ul class="flash" role="status">
+      {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

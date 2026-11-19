@@ -26,14 +26,16 @@ load_dotenv(BASE_DIR.parent / '.env')
 # SECURITY WARNING: keep the secret key used in production secret!
 # Falls back to a dev-only key so the project runs out of the box; set
 # DJANGO_SECRET_KEY (e.g. in a .env file) for any non-local deployment.
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-cde)t!iu@!f&cuzn9k00mmwn!+idx%717tlcob+f#^t#20&71c',
-)
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured('Set DJANGO_SECRET_KEY when DJANGO_DEBUG is not True.')
+    SECRET_KEY = 'dev-only-key-not-for-production'
+
+# SECURITY WARNING: don't run with debug turned on in production!
 ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 
 
@@ -65,7 +67,7 @@ ROOT_URLCONF = 'predictor.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates','static'],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -87,7 +89,7 @@ WSGI_APPLICATION = 'predictor.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DB_PATH', BASE_DIR / 'db.sqlite3'),
     }
 }
 
@@ -143,3 +145,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGOUT_REDIRECT_URL = "/"
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', 'True') == 'True'
