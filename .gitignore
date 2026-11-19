@@ -24,4 +24,3 @@ e2e/shots/
 # graphify output (generated; rebuilt by the post-commit hook)
 graphify-out/
 CLAUDE.md
-e2e/
